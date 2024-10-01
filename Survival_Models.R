@@ -62,15 +62,49 @@ yr_mort2 <- function(x){
   1 - yr_surv
 }
 
-fit2 <- brm(mort ~ 1, 
+fit2M <- brm(mort ~ mean_temp, 
            data = cage_dat[which(cage_dat$species == "M" &
                                    !is.na(cage_dat$prev_length)),], 
-           family = "bernoulli")
+           family = "bernoulli", 
+           iter = 4000, cores = 4)
+
+fit2A <- brm(mort ~ mean_temp, 
+             data = cage_dat[which(cage_dat$species == "As" &
+                                     !is.na(cage_dat$prev_length)),], 
+             family = "bernoulli", 
+             iter = 4000, cores = 4)
+
+temp_df <- cbind.data.frame(meds = c(fixef(fit2M)[2,1], 
+                                     fixef(fit2A)[2,1]),
+                            lows = c(fixef(fit2M)[2,3],
+                                     fixef(fit2A)[2,3]),
+                            ups = c(fixef(fit2M)[2,4], 
+                                     fixef(fit2A)[2,4]), 
+                            sp = c("Mex", "Acan"))
+
+ggplot(data = temp_df, aes(x = sp, y = meds, ymin = lows, ymax = ups)) + 
+  geom_pointrange() + geom_hline(yintercept = 0, linetype = "dashed") + 
+  theme_classic() + ylab("Estimated Temperature Effect") + xlab("Species")
+
+tapply(cage_dat$mort, list(cage_dat$species, cage_dat$site), 
+       sum)
+
+fit3 <- brm(mort ~ mean_temp + (1|site), 
+            data = cage_dat[which(cage_dat$species == "M" &
+                                    !is.na(cage_dat$prev_length)),], 
+            family = "bernoulli", 
+            iter = 4000, cores = 4)
+
+fit4 <- brm(mort ~ (1|site), 
+            data = cage_dat[which(cage_dat$species == "M" &
+                                    !is.na(cage_dat$prev_length)),], 
+            family = "bernoulli", 
+            iter = 4000, cores = 4)
 
 per_fortnight_pred <- posterior_epred(fit2, 
                                       cbind.data.frame(date_diff = 1))
 
-yr_mort2(per_fortnight_pred)
+median(yr_mort2(per_fortnight_pred))
 
 # okay, now with size?
 
@@ -90,4 +124,9 @@ View(yr_mort2(per_dat_pred))
 
 # size independent mortality? maybe?
 
+# mod attempt Sep 1st
+
+fit <- brm(mort ~ prev_length + species  + range, 
+           data = cage_dat[which(!is.na(cage_dat$prev_length)),], 
+           family = "bernoulli")
 
