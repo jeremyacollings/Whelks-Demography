@@ -2,6 +2,7 @@
 ########## COMPILE CAGE EXPERIMENT DATA ##########
 
 library(tidyverse)
+library(readxl)
 
 # Bring in data -----------------------------------------------------------
 
@@ -168,18 +169,21 @@ names(mean_temps) <- names(low_temps) <- names(high_temps) <- sub("\\.csv$", "",
 
 # getting temps relevant to each species
 
-mean_tempsA <- mean_temps[which(grepl("0\\.5", names(mean_temps)))]
-low_tempsA <- low_temps[which(grepl("0\\.5", names(low_temps)))]
-high_tempsA <- high_temps[which(grepl("0\\.5", names(high_temps)))]
+mean_tempsA <- mean_temps[which(grepl("0\\.5", names(mean_temps)) | 
+                                  grepl("Dana_Point|Scripps", names(mean_temps)))]
+low_tempsA <- low_temps[which(grepl("0\\.5", names(mean_temps)) | 
+                                grepl("Dana_Point|Scripps", names(mean_temps)))]
+high_tempsA <- high_temps[which(grepl("0\\.5", names(mean_temps)) | 
+                                  grepl("Dana_Point|Scripps", names(mean_temps)))]
 
 mean_tempsM <- mean_temps[which(grepl("1\\.0", names(mean_temps)))]
 low_tempsM <- low_temps[which(grepl("1\\.0", names(low_temps)))]
 high_tempsM <- high_temps[which(grepl("1\\.0", names(high_temps)))]
 
-names(mean_tempsA) <- c("Cape Mendocino", "Cape Mendocino South", 
-                        "Cardiff", "Crystal Cove", "Heisler", 
-                        "La Chorerra", "Punta Morro", "San Miguel")
-names(mean_tempsM) <- c("Cabrillo", "Campo Kennedy", "Cape Mendocino",
+names(mean_tempsA) <- names(high_tempsA) <- c("Cape Mendocino", "Cape Mendocino South", 
+                        "Cardiff", "Crystal Cove", "Dana Point", "Heisler", 
+                        "La Chorerra", "Punta Morro", "San Miguel", "Scripps")
+names(mean_tempsM) <- names(high_tempsM) <- c("Cabrillo", "Campo Kennedy", "Cape Mendocino",
                         "Cape Mendocino South", "Cardiff", "Crystal Cove", 
                         "Dana Point", "Goff Island", "Heisler", 
                         "La Chorerra", "Little Corona", "Moat Creek", 
@@ -188,15 +192,17 @@ names(mean_tempsM) <- c("Cabrillo", "Campo Kennedy", "Cape Mendocino",
 
 # not sure why Scripps is formatted incorrectly...
 new_dates <- strptime(names(mean_tempsM$Scripps), format = "%Y-%m-%d")
-names(mean_tempsM$Scripps) <- format(new_dates, format = "%m/%d/%Y")
+names(mean_tempsM$Scripps) <- names(high_tempsM$Scripps) <- format(new_dates, format = "%m/%d/%Y")
 
-mean_temp_range <- c()
+
+mean_temp_range <- high_temp_range <- c()
 for(i in 1:nrow(cage_dat)){
   site = cage_dat$site[i]
   start = as.Date(cage_dat$prev_date[i])
   stop = as.Date(cage_dat$survey_date[i])
   if(is.na(start)){
     mean_temp_range <- c(mean_temp_range, NA)
+    high_temp_range <- c(high_temp_range, NA)
   }
   else{
     if(cage_dat$species[i] == "As"){
@@ -204,22 +210,35 @@ for(i in 1:nrow(cage_dat)){
       mean_temp <- mean(mean_tempsA[[site]][which(dates %in% 
                                                     seq(from = start, 
                                                         to = stop, 
-                                                        by = 1))])
+                                                        by = 1))], na.rm = TRUE)
       mean_temp_range <- c(mean_temp_range, mean_temp)
+      
+      high_temp <- mean(high_tempsA[[site]][which(dates %in% 
+                                                    seq(from = start, 
+                                                        to = stop, 
+                                                        by = 1))], na.rm = TRUE)
+      high_temp_range <- c(high_temp_range, high_temp)
     }
     else{
       dates <- as.Date(names(mean_tempsM[[site]]), format = "%m/%d/%Y")
       mean_temp <- mean(mean_tempsM[[site]][which(dates %in% 
                                                     seq(from = start, 
                                                         to = stop, 
-                                                        by = 1))])
+                                                        by = 1))], na.rm = TRUE)
       mean_temp_range <- c(mean_temp_range, mean_temp)
+      
+      high_temp <- mean(high_tempsM[[site]][which(dates %in% 
+                                                    seq(from = start, 
+                                                        to = stop, 
+                                                        by = 1))], na.rm = TRUE)
+      high_temp_range <- c(high_temp_range, high_temp)
     }
     
   }
 }
 
 cage_dat$mean_temp <- mean_temp_range
+cage_dat$high_temp <- high_temp_range
 
 # categorize into historic v.s. home range
 
